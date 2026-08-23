@@ -1,0 +1,22 @@
+[project]
+name = "trellis-mcp"
+version = "0.1.0"
+description = "An MCP server that reads a Trello workspace and explains how the work is actually flowing."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "mcp>=2.0.0",
+    "httpx>=0.28",
+    "python-dotenv>=1.0",
+]
+
+[project.scripts]
+trellis-mcp = "trellis.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/trellis"]
