@@ -1,0 +1,23 @@
+runtime: "container"
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
+startCommand:
+  type: "http"
+  configSchema:
+    type: "object"
+    properties:
+      trelloApiKey:
+        type: "string"
+        title: "Trello API key"
+        description: "API key from https://trello.com/power-ups/admin"
+      trelloToken:
+        type: "string"
+        title: "Trello token"
+        description: "Token generated from the API key page. Grants access to the boards you approve."
+    required:
+      - "trelloApiKey"
+      - "trelloToken"
+  exampleConfig:
+    trelloApiKey: "0123456789abcdef0123456789abcdef"
+    trelloToken: "ATTAexampletokenvalue0000000000000000000000000000000000000000000000"

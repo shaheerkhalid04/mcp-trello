@@ -9,10 +9,13 @@ dependencies = [
     "mcp>=2.0.0",
     "httpx>=0.28",
     "python-dotenv>=1.0",
+    "starlette>=0.40",
+    "uvicorn>=0.30",
 ]
 
 [project.scripts]
 trellis-mcp = "trellis.server:main"
+trellis-mcp-http = "trellis.smithery_app:main"
 
 [build-system]
 requires = ["hatchling"]

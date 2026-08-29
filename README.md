@@ -125,8 +125,47 @@ npx @modelcontextprotocol/inspector .venv/Scripts/python.exe -m trellis.server
 
 ### Over HTTP
 
-Set `MCP_TRANSPORT=streamable-http` to serve over HTTP instead of stdio. This is the
-mode a hosted deployment uses.
+```bash
+PORT=8080 .venv/Scripts/python -m trellis.smithery_app
+```
+
+Serves the MCP streamable HTTP endpoint at `/mcp`. This is the mode a hosted
+deployment uses.
+
+## Deploying to Smithery
+
+The repo ships `smithery.yaml` and a `Dockerfile` for Smithery's container runtime.
+
+1. Push this repo to GitHub.
+2. At [smithery.ai](https://smithery.ai), click **Deploy** and connect the repo.
+3. Smithery builds the image, sets `PORT`, and proxies to `/mcp`.
+
+Users then supply `trelloApiKey` and `trelloToken` in Smithery's config UI, which
+is declared by the `configSchema` in `smithery.yaml`.
+
+### How credentials reach the server
+
+Hosted, one process serves many people, so credentials cannot come from the
+environment. Smithery passes each caller's config as base64-encoded JSON in a
+`config` query parameter on every request to `/mcp`.
+
+`smithery_app.py` decodes that and binds the credentials to a **`ContextVar`**,
+not a module-level global. This matters: with a global, two users hitting the
+server at the same time will overwrite each other's token, and requests get made
+with the wrong person's credentials. `tests/test_smithery_config.py` has a test
+that interleaves two requests and fails if their tokens cross.
+
+Environment variables still work and are used when no request config is present,
+so the same build runs locally over stdio and hosted over HTTP.
+
+### Two notes if you adapt the Smithery Python cookbook
+
+- Its example stores the API key in a module-level global. Fine for a demo, wrong
+  for anything multi-tenant.
+- It rewrites `/mcp` to `/mcp/`, which was correct for FastMCP 1.x. MCP SDK 2.x
+  mounts the route at `/mcp`, and Starlette's `redirect_slashes` sends `/mcp/`
+  back to `/mcp`, so that rewrite causes an infinite redirect loop. This repo
+  normalises the other way.
 
 ## Things worth knowing
 

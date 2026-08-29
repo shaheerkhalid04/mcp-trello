@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from contextvars import ContextVar
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
@@ -20,12 +21,37 @@ class Credentials:
     token: str
 
 
-def load_credentials() -> Credentials:
-    """Read TRELLO_API_KEY / TRELLO_TOKEN from the environment.
+# Credentials for the request currently being served.
+#
+# Running locally over stdio there is one user and the environment is enough.
+# Hosted on Smithery one process serves many users, and each request carries its
+# own config, so a module-level global would let one caller's token leak into
+# another caller's request. A ContextVar is scoped to the task handling the
+# request, which is the boundary we actually want.
+_session_credentials: ContextVar[Credentials | None] = ContextVar(
+    "trellis_session_credentials", default=None
+)
 
-    Both are required by every Trello REST call, so we fail with an
-    actionable message rather than letting the API return a bare 401.
+
+def set_session_credentials(api_key: str, token: str):
+    """Bind credentials to the current request. Returns a reset token."""
+    return _session_credentials.set(Credentials(api_key=api_key, token=token))
+
+
+def reset_session_credentials(reset_token) -> None:
+    _session_credentials.reset(reset_token)
+
+
+def load_credentials() -> Credentials:
+    """Resolve credentials for this request.
+
+    Per-request config wins over the environment, so the same build works both
+    as a local stdio server and as a hosted multi-tenant one.
     """
+    scoped = _session_credentials.get()
+    if scoped is not None:
+        return scoped
+
     api_key = os.environ.get("TRELLO_API_KEY", "").strip()
     token = os.environ.get("TRELLO_TOKEN", "").strip()
 

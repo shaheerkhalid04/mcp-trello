@@ -31,7 +31,10 @@ class TrelloError(RuntimeError):
 
 class TrelloClient:
     def __init__(self, credentials: Credentials | None = None) -> None:
-        self._credentials = credentials or load_credentials()
+        # Left unresolved on purpose. Credentials are read per request so a
+        # hosted instance can serve callers with different tokens over one
+        # shared connection pool. Passing them here pins the client to one set.
+        self._credentials = credentials
         self._client: httpx.AsyncClient | None = None
 
     async def _http(self) -> httpx.AsyncClient:
@@ -55,9 +58,10 @@ class TrelloClient:
         Trello takes credentials as query parameters on every request, including
         writes, so they are merged in here rather than set as headers.
         """
+        credentials = self._credentials or load_credentials()
         query: dict[str, Any] = {
-            "key": self._credentials.api_key,
-            "token": self._credentials.token,
+            "key": credentials.api_key,
+            "token": credentials.token,
         }
         for key, value in (params or {}).items():
             if value is not None:
