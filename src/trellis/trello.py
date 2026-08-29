@@ -6,6 +6,7 @@ error translation and timeouts are handled in exactly one place.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import httpx
@@ -14,6 +15,23 @@ from .config import Credentials, load_credentials
 
 API_BASE = "https://api.trello.com/1"
 TIMEOUT = httpx.Timeout(20.0, connect=10.0)
+
+# Trello takes credentials as query parameters, with no header-auth option. That
+# means the full API key and token appear in every request URL, and httpx logs
+# request URLs at INFO. Left alone, a single logging.basicConfig(level=INFO)
+# anywhere in the process dumps live credentials into stdout and any log file.
+# Silence that logger at import time; we report failures ourselves anyway.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+
+def redact(text: str) -> str:
+    """Strip credential values out of text before it is shown or logged."""
+    import re
+
+    return re.sub(
+        r"(key|token)=[^&\s\"']+", r"\1=REDACTED", text, flags=re.IGNORECASE
+    )
 
 # Field sets kept narrow on purpose: Trello returns very large card objects by
 # default, and an MCP tool result is spent straight out of the model's context.
@@ -90,7 +108,8 @@ class TrelloClient:
             )
         if response.status_code >= 400:
             raise TrelloError(
-                f"Trello API error {response.status_code} on {path}: {response.text[:400]}"
+                f"Trello API error {response.status_code} on {path}: "
+                f"{redact(response.text[:400])}"
             )
 
         if not response.content:
